@@ -1,0 +1,37 @@
+# Cloudflare Pages _redirects — preserves old pharmaceutical.audio URLs that
+# pointed at the worldwide directory before the 2026-04-28 split. All
+# pharmaceutical.audio/* URLs that used to serve worldwide content now 301
+# to the equivalent URL at www.worldwwwide.com.
+#
+# Order matters: more specific rules first.
+
+# /worldwide/feed.xml -> /feed.xml on the new domain
+/worldwide/feed.xml      https://www.worldwwwide.com/feed.xml      301
+# /worldwide/this-week/ etc. -> root-level temporal views
+/worldwide/this-week/*   https://www.worldwwwide.com/this-week/:splat   301
+/worldwide/this-month/*  https://www.worldwwwide.com/this-month/:splat  301
+/worldwide/next-month/*  https://www.worldwwwide.com/next-month/:splat  301
+# Anything else under /worldwide/ — most importantly /worldwide/events/...
+/worldwide/*             https://www.worldwwwide.com/:splat         301
+# Bare /worldwide and /worldwide.html -> homepage of new domain
+/worldwide               https://www.worldwwwide.com/                301
+/worldwide.html          https://www.worldwwwide.com/                301
+
+# Worldwide infrastructure that was always at the root of pharmaceutical.audio
+# but is now exclusively on www.worldwwwide.com
+/artists/*               https://www.worldwwwide.com/artists/:splat     301
+/images/*                https://www.worldwwwide.com/images/:splat      301
+/api/*                   https://www.worldwwwide.com/api/:splat         301
+/add                     https://www.worldwwwide.com/add                301
+/add/*                   https://www.worldwwwide.com/add/:splat         301
+/submit                  https://www.worldwwwide.com/submit             301
+/submit/*                https://www.worldwwwide.com/submit/:splat      301
+/report                  https://www.worldwwwide.com/report             301
+/report/*                https://www.worldwwwide.com/report/:splat      301
+
+# Root-level temporal views (rare — mostly nobody had pharma.audio/this-week/
+# bookmarked, but redirect anyway for safety)
+/this-week/*             https://www.worldwwwide.com/this-week/:splat   301
+/this-month/*            https://www.worldwwwide.com/this-month/:splat  301
+/next-month/*            https://www.worldwwwide.com/next-month/:splat  301
+/feed.xml                https://www.worldwwwide.com/feed.xml           301
