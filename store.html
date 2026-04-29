@@ -40,7 +40,11 @@
       nav.style.display = 'flex';
       var idx = 0;
       var show = function (i) {
-        imgs.forEach(function (img, n) { img.classList.toggle('active', n === i); });
+        var img = imgs[i];
+        if (img.dataset.src && !img.getAttribute('src')) {
+          img.setAttribute('src', img.dataset.src);
+        }
+        imgs.forEach(function (other, n) { other.classList.toggle('active', n === i); });
       };
       nav.querySelector('.prev').addEventListener('click', function (e) {
         e.preventDefault();

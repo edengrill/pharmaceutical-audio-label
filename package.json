@@ -6,6 +6,7 @@
     "build": "node build-store.mjs"
   },
   "dependencies": {
+    "sharp": "^0.33.5",
     "stripe": "^17.0.0"
   }
 }

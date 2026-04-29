@@ -1,8 +1,9 @@
 // build-store.mjs
 //
 // runs at deploy time on cloudflare pages.
-// fetches active products from stripe, ensures each non-inquire product has a
-// payment link, then renders product cards into store.html between the
+// fetches active products from stripe, downloads + optimizes each product image
+// (resize to ≤1200px wide, convert to webp q80), ensures each non-inquire product
+// has a payment link, then renders product cards into store.html between the
 // <!-- BUILD products --> ... <!-- /BUILD --> markers.
 //
 // product metadata in stripe drives behavior:
@@ -12,20 +13,31 @@
 //   metadata.payment_link        — populated by this script; do not edit by hand
 //   metadata.payment_link_price  — populated by this script; do not edit by hand
 //
+// images are written to ./store_assets/<product_id>/<index>.webp at build time
+// and served from cloudflare's cdn alongside the html. the directory is
+// regenerated each build, so it is gitignored.
+//
 // failure mode: if STRIPE_SECRET_KEY is missing or stripe is unreachable, the
 // script logs a warning, leaves an empty product list in store.html, and
-// exits 0 so the rest of the site still deploys.
+// exits 0 so the rest of the site still deploys. if a single image fails to
+// download, the script falls back to the original stripe url for that image.
 
 import Stripe from 'stripe';
-import { readFile, writeFile } from 'node:fs/promises';
+import sharp from 'sharp';
+import { readFile, writeFile, mkdir } from 'node:fs/promises';
+import { dirname } from 'node:path';
 
 const STORE_HTML = './store.html';
+const ASSETS_DIR = './store_assets';
 const SUCCESS_URL = 'https://pharmaceutical.audio/store/thanks';
 const SHIPPING_COUNTRIES = [
   'AU', 'AT', 'BE', 'CA', 'CH', 'CZ', 'DE', 'DK', 'ES', 'FI',
   'FR', 'GB', 'IE', 'IT', 'JP', 'NL', 'NO', 'NZ', 'PL', 'PT',
   'SE', 'US',
 ];
+
+const IMAGE_MAX_WIDTH = 1200;
+const IMAGE_QUALITY = 80;
 
 const BUILD_OPEN = '<!-- BUILD products -->';
 const BUILD_CLOSE = '<!-- /BUILD -->';
@@ -39,6 +51,7 @@ async function main() {
   } else {
     try {
       products = await fetchProducts(new Stripe(key));
+      await processImages(products);
     } catch (err) {
       console.error('[build-store] stripe error — rendering empty store:', err.message);
       products = [];
@@ -78,10 +91,8 @@ async function fetchProducts(stripe) {
     starting_after = page.data[page.data.length - 1].id;
   }
 
-  // skip products without a default price (drafts that aren't priced yet)
   const priced = all.filter((p) => p.default_price && typeof p.default_price === 'object');
 
-  // ensure each non-inquire product has a current payment link
   for (const product of priced) {
     if (isInquireOnly(product)) continue;
     const priceId = product.default_price.id;
@@ -107,7 +118,6 @@ async function fetchProducts(stripe) {
     console.log(`[build-store] created payment link for ${product.name}`);
   }
 
-  // sort: metadata.order asc, then created desc
   priced.sort((a, b) => {
     const ao = parseInt(a.metadata.order ?? '999', 10);
     const bo = parseInt(b.metadata.order ?? '999', 10);
@@ -118,6 +128,44 @@ async function fetchProducts(stripe) {
   return priced;
 }
 
+async function processImages(products) {
+  // download + optimize each image in parallel; attach local paths to product
+  const tasks = [];
+  for (const product of products) {
+    product._localImages = [];
+    const images = (product.images || []).slice(0, 8);
+    for (let i = 0; i < images.length; i++) {
+      const sourceUrl = images[i];
+      const localPath = `/store_assets/${product.id}/${i}.webp`;
+      const fsPath = `${ASSETS_DIR}/${product.id}/${i}.webp`;
+      tasks.push(
+        optimizeImage(sourceUrl, fsPath)
+          .then(() => { product._localImages[i] = localPath; })
+          .catch((err) => {
+            console.warn(`[build-store] image ${i} of "${product.name}" failed (${err.message}); using stripe url`);
+            product._localImages[i] = sourceUrl;
+          })
+      );
+    }
+  }
+  await Promise.all(tasks);
+  const total = products.reduce((n, p) => n + (p._localImages?.length || 0), 0);
+  console.log(`[build-store] processed ${total} images`);
+}
+
+async function optimizeImage(url, fsPath) {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`fetch ${res.status}`);
+  const input = Buffer.from(await res.arrayBuffer());
+  const output = await sharp(input)
+    .rotate() // honor EXIF orientation
+    .resize({ width: IMAGE_MAX_WIDTH, withoutEnlargement: true })
+    .webp({ quality: IMAGE_QUALITY })
+    .toBuffer();
+  await mkdir(dirname(fsPath), { recursive: true });
+  await writeFile(fsPath, output);
+}
+
 function isInquireOnly(product) {
   return product.metadata.inquire_only === 'true';
 }
@@ -125,12 +173,15 @@ function isInquireOnly(product) {
 function renderProduct(product) {
   const inquire = isInquireOnly(product);
   const size = product.metadata.size?.trim();
-  const images = (product.images || []).slice(0, 8);
+  const images = product._localImages || [];
+
   const galleryImgs = images.length === 0
-    ? ''
+    ? '      <!-- no images -->'
     : images
         .map((url, i) =>
-          `      <img src="${escapeAttr(url)}" alt=""${i === 0 ? ' class="active"' : ''}>`)
+          i === 0
+            ? `      <img src="${escapeAttr(url)}" alt="" class="active" loading="lazy" decoding="async">`
+            : `      <img data-src="${escapeAttr(url)}" alt="" loading="lazy" decoding="async">`)
         .join('\n');
 
   const action = inquire
@@ -141,7 +192,7 @@ function renderProduct(product) {
 
   return `  <div class="item">
     <div class="gallery">
-${galleryImgs || '      <!-- no images -->'}
+${galleryImgs}
     </div>
     <div class="gallery-nav">
       <a class="prev">← prev</a>
