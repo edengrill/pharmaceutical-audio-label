@@ -1,0 +1,11 @@
+{
+  "name": "pharmaceutical-audio-label",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node build-store.mjs"
+  },
+  "dependencies": {
+    "stripe": "^17.0.0"
+  }
+}
