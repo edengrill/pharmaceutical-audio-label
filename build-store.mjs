@@ -6,8 +6,12 @@
 // has a payment link, then renders product cards into store.html between the
 // <!-- BUILD products --> ... <!-- /BUILD --> markers.
 //
+// product fields rendered:
+//   name                    — built-in stripe field; always shown
+//   description             — built-in stripe field; shown below the name (optional)
+//
 // product metadata in stripe drives behavior:
-//   metadata.size           — string shown on the card (optional)
+//   metadata.size           — string shown below the description (optional)
 //   metadata.inquire_only   — "true" → renders a mailto link instead of buy
 //   metadata.order          — integer; lower numbers come first (optional)
 //   metadata.payment_link        — populated by this script; do not edit by hand
@@ -172,6 +176,7 @@ function isInquireOnly(product) {
 
 function renderProduct(product) {
   const inquire = isInquireOnly(product);
+  const description = product.description?.trim();
   const size = product.metadata.size?.trim();
   const images = product._localImages || [];
 
@@ -188,6 +193,7 @@ function renderProduct(product) {
     ? `      <a href="mailto:store@pharmaceutical.audio?subject=${encodeURIComponent('inquiry: ' + product.name)}">inquire →</a>`
     : `      <a href="${escapeAttr(product.metadata.payment_link)}">buy →</a>`;
 
+  const descLine = description ? `      <span>${escapeHtml(description)}</span>\n` : '';
   const sizeLine = size ? `      <span>size ${escapeHtml(size)}</span>\n` : '';
 
   return `  <div class="item">
@@ -200,7 +206,7 @@ ${galleryImgs}
     </div>
     <div class="item-meta">
       <span>${escapeHtml(product.name)}</span>
-${sizeLine}${action}
+${descLine}${sizeLine}${action}
     </div>
   </div>`;
 }
