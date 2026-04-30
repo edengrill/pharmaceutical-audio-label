@@ -1,0 +1,16 @@
+User-agent: *
+Allow: /
+
+User-agent: facebookexternalhit
+Allow: /
+
+User-agent: facebookcatalog
+Allow: /
+
+User-agent: meta-externalagent
+Allow: /
+
+User-agent: Twitterbot
+Allow: /
+
+Sitemap: https://pharmaceutical.audio/sitemap.xml
