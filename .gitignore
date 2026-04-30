@@ -1,5 +1,6 @@
 node_modules/
 store_assets/
+Trespasser XIII [split into chunks]/
 .DS_Store
 .env
 .env.local
