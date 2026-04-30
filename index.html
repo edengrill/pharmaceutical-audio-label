@@ -65,11 +65,22 @@
     <a href="/trespasser">trespasser</a>
     <a href="/store">store</a>
   </nav>
-  <video autoplay muted loop playsinline preload="auto"></video>
+  <video autoplay muted playsinline preload="auto"></video>
   <script>
     var n = 12;
-    var idx = String(Math.floor(Math.random() * n) + 1).padStart(2, '0');
-    document.querySelector('video').src = '/videos/' + idx + '.mp4';
+    var v = document.querySelector('video');
+    var lastIdx = null;
+    function pickNext() {
+      var idx;
+      do { idx = Math.floor(Math.random() * n) + 1; }
+      while (idx === lastIdx && n > 1);
+      lastIdx = idx;
+      v.src = '/videos/' + String(idx).padStart(2, '0') + '.mp4';
+      var p = v.play();
+      if (p !== undefined) p.catch(function () {});
+    }
+    v.addEventListener('ended', pickNext);
+    pickNext();
   </script>
 </body>
 </html>
