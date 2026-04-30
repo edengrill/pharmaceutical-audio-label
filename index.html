@@ -56,6 +56,14 @@
       width: 20rem;
       max-width: 100%;
       display: block;
+      pointer-events: none;
+    }
+    video::-webkit-media-controls,
+    video::-webkit-media-controls-panel,
+    video::-webkit-media-controls-play-button,
+    video::-webkit-media-controls-start-playback-button {
+      display: none !important;
+      -webkit-appearance: none;
     }
   </style>
 </head>
@@ -65,7 +73,7 @@
     <a href="/trespasser">trespasser</a>
     <a href="/store">store</a>
   </nav>
-  <video autoplay muted playsinline preload="auto"></video>
+  <video autoplay muted playsinline preload="auto" disablepictureinpicture disableremoteplayback controlslist="nodownload nofullscreen noremoteplayback noplaybackrate"></video>
   <script>
     var n = 12;
     var v = document.querySelector('video');
