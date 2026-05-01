@@ -15,9 +15,10 @@
     header { margin-bottom: 2.5rem; }
     header a { font-size: 0.78rem; color: #000000; text-decoration: none; letter-spacing: 0.01em; }
     header a:hover { text-decoration: underline; text-underline-offset: 2px; }
-    .releases { display: flex; flex-direction: column; gap: 0.15rem; }
+    .releases { display: flex; flex-direction: column; gap: 0.15rem; margin-bottom: 2.5rem; }
     .releases a { font-size: 0.78rem; font-weight: 400; color: #000000; text-decoration: none; letter-spacing: 0.01em; line-height: 1.6; width: fit-content; }
     .releases a:hover { text-decoration: underline; text-underline-offset: 2px; }
+    video { width: 20rem; max-width: 100%; display: block; }
   </style>
 </head>
 <body>
@@ -48,5 +49,35 @@
     <a href="https://eden777.bandcamp.com/track/me-on" target="_blank">me on, eden777</a>
     <a href="https://bondgirll.bandcamp.com/track/forevers" target="_blank">forevers, bondgirl</a>
   </div>
+  <video autoplay muted loop playsinline preload="auto"
+         disablepictureinpicture disableremoteplayback
+         controlslist="nodownload nofullscreen noremoteplayback noplaybackrate"
+         src="/videos_singles/01.mp4"></video>
+  <script>
+    (function () {
+      var v = document.querySelector('video');
+      function lock() { v.style.pointerEvents = 'none'; }
+      v.addEventListener('playing', lock, { once: true });
+      v.addEventListener('pause', function () {
+        if (!v.ended && !v.seeking) {
+          setTimeout(function () { v.play().catch(function () {}); }, 50);
+        }
+      });
+      var p = v.play();
+      if (p !== undefined) {
+        p.catch(function () {
+          var kick = function () {
+            v.play().catch(function () {});
+            document.removeEventListener('click', kick);
+            document.removeEventListener('touchstart', kick);
+            document.removeEventListener('keydown', kick);
+          };
+          document.addEventListener('click', kick, { once: true });
+          document.addEventListener('touchstart', kick, { once: true });
+          document.addEventListener('keydown', kick, { once: true });
+        });
+      }
+    })();
+  </script>
 </body>
 </html>
