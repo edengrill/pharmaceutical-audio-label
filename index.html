@@ -56,11 +56,8 @@
       width: 20rem;
       max-width: 100%;
       display: block;
-      pointer-events: none;
     }
-    video::-webkit-media-controls,
-    video::-webkit-media-controls-panel,
-    video::-webkit-media-controls-play-button,
+    video::-webkit-media-controls-overlay-play-button,
     video::-webkit-media-controls-start-playback-button {
       display: none !important;
       -webkit-appearance: none;
@@ -114,8 +111,24 @@
         mount.innerHTML = '';
         mount.appendChild(v);
 
-        var p = v.play();
-        if (p !== undefined) p.catch(function () {});
+        function tryPlay() {
+          var p = v.play();
+          if (p !== undefined) {
+            p.catch(function () {
+              // autoplay refused — wait for first user gesture anywhere on the page
+              var kick = function () {
+                v.play().catch(function () {});
+                document.removeEventListener('click', kick);
+                document.removeEventListener('touchstart', kick);
+                document.removeEventListener('keydown', kick);
+              };
+              document.addEventListener('click', kick, { once: true });
+              document.addEventListener('touchstart', kick, { once: true });
+              document.addEventListener('keydown', kick, { once: true });
+            });
+          }
+        }
+        tryPlay();
       }
 
       if (document.readyState === 'loading') {
