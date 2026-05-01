@@ -14,9 +14,14 @@
     header { margin-bottom: 2.5rem; }
     header a { font-size: 0.78rem; color: #000000; text-decoration: none; letter-spacing: 0.01em; }
     header a:hover { text-decoration: underline; text-underline-offset: 2px; }
-    .releases { display: flex; flex-direction: column; gap: 0.15rem; }
+    .releases { display: flex; flex-direction: column; gap: 0.15rem; margin-bottom: 2.5rem; }
     .releases a { font-size: 0.78rem; font-weight: 400; color: #000000; text-decoration: none; letter-spacing: 0.01em; line-height: 1.6; width: fit-content; }
     .releases a:hover { text-decoration: underline; text-underline-offset: 2px; }
+    #video-mount { position: relative; width: 20rem; max-width: 100%; aspect-ratio: 16 / 9; }
+    #video-mount video { position: absolute; inset: 0; width: 100%; height: 100%; display: block; opacity: 0; }
+    #video-mount video.active { opacity: 1; }
+    video::-webkit-media-controls-overlay-play-button,
+    video::-webkit-media-controls-start-playback-button { display: none !important; -webkit-appearance: none; }
   </style>
 </head>
 <body>
@@ -38,5 +43,71 @@
     <a href="https://soundcloud.com/pharmaceuticalaudio/bond-girl-30-minute-abs-minimix" target="_blank">jul 2016, bondgirl mix</a>
     <a href="https://soundcloud.com/pharmaceuticalaudio/bond-girl-vs-just-gerald-power-hour-mud-wrestle" target="_blank">jul 2016, eden777 & hazxx mix</a>
   </div>
+  <div id="video-mount"></div>
+  <script>
+    (function () {
+      var n = 15;
+      var base = '/videos_audio/';
+      var lastIdx = null;
+      function pickIdx() {
+        var idx;
+        do { idx = Math.floor(Math.random() * n) + 1; } while (idx === lastIdx && n > 1);
+        lastIdx = idx;
+        return String(idx).padStart(2, '0');
+      }
+      function makeVid() {
+        var v = document.createElement('video');
+        v.muted = true; v.defaultMuted = true; v.playsInline = true; v.preload = 'auto';
+        v.setAttribute('muted', ''); v.setAttribute('playsinline', ''); v.setAttribute('webkit-playsinline', '');
+        v.setAttribute('disablepictureinpicture', ''); v.setAttribute('disableremoteplayback', '');
+        v.setAttribute('controlslist', 'nodownload nofullscreen noremoteplayback noplaybackrate');
+        return v;
+      }
+      function lock(v) { v.style.pointerEvents = 'none'; }
+      function attach() {
+        var mount = document.getElementById('video-mount');
+        var current = makeVid(), standby = makeVid();
+        current.classList.add('active');
+        current.src = base + pickIdx() + '.mp4';
+        standby.src = base + pickIdx() + '.mp4';
+        mount.innerHTML = '';
+        mount.appendChild(current); mount.appendChild(standby);
+        function rotate() {
+          var t = current; current = standby; standby = t;
+          current.classList.add('active');
+          standby.classList.remove('active');
+          var p = current.play();
+          if (p !== undefined) p.then(function () { lock(current); }).catch(function () {});
+          standby.src = base + pickIdx() + '.mp4';
+          standby.load();
+          current.addEventListener('ended', rotate, { once: true });
+        }
+        current.addEventListener('ended', rotate, { once: true });
+        function pauseGuard(v) {
+          v.addEventListener('pause', function () {
+            if (!v.classList.contains('active')) return;
+            if (!v.ended && !v.seeking) setTimeout(function () { v.play().catch(function () {}); }, 50);
+          });
+        }
+        pauseGuard(current); pauseGuard(standby);
+        var p = current.play();
+        if (p !== undefined) {
+          p.then(function () { lock(current); }).catch(function () {
+            var kick = function () {
+              current.play().then(function () { lock(current); }).catch(function () {});
+              document.removeEventListener('click', kick);
+              document.removeEventListener('touchstart', kick);
+              document.removeEventListener('keydown', kick);
+            };
+            document.addEventListener('click', kick, { once: true });
+            document.addEventListener('touchstart', kick, { once: true });
+            document.addEventListener('keydown', kick, { once: true });
+          });
+        } else { lock(current); }
+      }
+      if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', attach);
+      else attach();
+    })();
+  </script>
 </body>
 </html>
