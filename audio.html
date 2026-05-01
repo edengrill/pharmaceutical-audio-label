@@ -68,12 +68,12 @@
         return String(idx).padStart(2, '0');
       }
 
-      function makeVid() {
+      function makeVid(active) {
         var v = document.createElement('video');
         v.muted = true;
         v.defaultMuted = true;
         v.playsInline = true;
-        v.preload = 'auto';
+        v.preload = active ? 'auto' : 'none';
         v.setAttribute('muted', '');
         v.setAttribute('playsinline', '');
         v.setAttribute('webkit-playsinline', '');
@@ -87,16 +87,24 @@
 
       function attach() {
         var mount = document.getElementById('video-mount');
-        var current = makeVid();
-        var standby = makeVid();
+        var current = makeVid(true);
+        var standby = makeVid(false);
 
         current.classList.add('active');
         current.src = base + pickIdx() + '.mp4';
-        standby.src = base + pickIdx() + '.mp4';
+        // standby.src deferred until current is actually playing.
 
         mount.innerHTML = '';
         mount.appendChild(current);
         mount.appendChild(standby);
+
+        current.addEventListener('playing', function onFirstPlay() {
+          lock(current);
+          if (!standby.src) {
+            standby.preload = 'auto';
+            standby.src = base + pickIdx() + '.mp4';
+          }
+        }, { once: true });
 
         function rotate() {
           var t = current; current = standby; standby = t;
@@ -127,9 +135,9 @@
         function tryPlay() {
           var p = current.play();
           if (p !== undefined) {
-            p.then(function () { lock(current); }).catch(function () {
+            p.catch(function () {
               var kick = function () {
-                current.play().then(function () { lock(current); }).catch(function () {});
+                current.play().catch(function () {});
                 document.removeEventListener('click', kick);
                 document.removeEventListener('touchstart', kick);
                 document.removeEventListener('keydown', kick);
@@ -138,8 +146,6 @@
               document.addEventListener('touchstart', kick, { once: true });
               document.addEventListener('keydown', kick, { once: true });
             });
-          } else {
-            lock(current);
           }
         }
         tryPlay();

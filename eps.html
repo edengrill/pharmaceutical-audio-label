@@ -54,7 +54,8 @@
       }
       function makeVid() {
         var v = document.createElement('video');
-        v.muted = true; v.defaultMuted = true; v.playsInline = true; v.preload = 'auto';
+        v.muted = true; v.defaultMuted = true; v.playsInline = true;
+        v.preload = arguments[0] ? 'auto' : 'none';
         v.setAttribute('muted', ''); v.setAttribute('playsinline', ''); v.setAttribute('webkit-playsinline', '');
         v.setAttribute('disablepictureinpicture', ''); v.setAttribute('disableremoteplayback', '');
         v.setAttribute('controlslist', 'nodownload nofullscreen noremoteplayback noplaybackrate');
@@ -63,12 +64,16 @@
       function lock(v) { v.style.pointerEvents = 'none'; }
       function attach() {
         var mount = document.getElementById('video-mount');
-        var current = makeVid(), standby = makeVid();
+        var current = makeVid(true), standby = makeVid(false);
         current.classList.add('active');
         current.src = base + pickIdx() + '.mp4';
-        standby.src = base + pickIdx() + '.mp4';
+        // standby.src deferred until current is playing (saves initial bandwidth)
         mount.innerHTML = '';
         mount.appendChild(current); mount.appendChild(standby);
+        current.addEventListener('playing', function () {
+          lock(current);
+          if (!standby.src) { standby.preload = 'auto'; standby.src = base + pickIdx() + '.mp4'; }
+        }, { once: true });
         function rotate() {
           var t = current; current = standby; standby = t;
           current.classList.add('active');
@@ -89,9 +94,9 @@
         pauseGuard(current); pauseGuard(standby);
         var p = current.play();
         if (p !== undefined) {
-          p.then(function () { lock(current); }).catch(function () {
+          p.catch(function () {
             var kick = function () {
-              current.play().then(function () { lock(current); }).catch(function () {});
+              current.play().catch(function () {});
               document.removeEventListener('click', kick);
               document.removeEventListener('touchstart', kick);
               document.removeEventListener('keydown', kick);
@@ -100,7 +105,7 @@
             document.addEventListener('touchstart', kick, { once: true });
             document.addEventListener('keydown', kick, { once: true });
           });
-        } else { lock(current); }
+        }
       }
       if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', attach);
       else attach();
