@@ -73,22 +73,57 @@
     <a href="/trespasser">trespasser</a>
     <a href="/store">store</a>
   </nav>
-  <video autoplay muted playsinline preload="auto" disablepictureinpicture disableremoteplayback controlslist="nodownload nofullscreen noremoteplayback noplaybackrate"></video>
+  <div id="video-mount"></div>
   <script>
-    var n = 43;
-    var v = document.querySelector('video');
-    var lastIdx = null;
-    function pickNext() {
-      var idx;
-      do { idx = Math.floor(Math.random() * n) + 1; }
-      while (idx === lastIdx && n > 1);
-      lastIdx = idx;
-      v.src = '/videos/' + String(idx).padStart(2, '0') + '.mp4';
-      var p = v.play();
-      if (p !== undefined) p.catch(function () {});
-    }
-    v.addEventListener('ended', pickNext);
-    pickNext();
+    (function () {
+      var n = 43;
+      var lastIdx = null;
+
+      function pickIdx() {
+        var idx;
+        do { idx = Math.floor(Math.random() * n) + 1; }
+        while (idx === lastIdx && n > 1);
+        lastIdx = idx;
+        return String(idx).padStart(2, '0');
+      }
+
+      function attach() {
+        var v = document.createElement('video');
+        v.muted = true;
+        v.defaultMuted = true;
+        v.autoplay = true;
+        v.loop = false;
+        v.playsInline = true;
+        v.preload = 'auto';
+        v.setAttribute('muted', '');
+        v.setAttribute('autoplay', '');
+        v.setAttribute('playsinline', '');
+        v.setAttribute('webkit-playsinline', '');
+        v.setAttribute('disablepictureinpicture', '');
+        v.setAttribute('disableremoteplayback', '');
+        v.setAttribute('controlslist', 'nodownload nofullscreen noremoteplayback noplaybackrate');
+        v.src = '/videos/' + pickIdx() + '.mp4';
+
+        v.addEventListener('ended', function () {
+          v.src = '/videos/' + pickIdx() + '.mp4';
+          var p = v.play();
+          if (p !== undefined) p.catch(function () {});
+        });
+
+        var mount = document.getElementById('video-mount');
+        mount.innerHTML = '';
+        mount.appendChild(v);
+
+        var p = v.play();
+        if (p !== undefined) p.catch(function () {});
+      }
+
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', attach);
+      } else {
+        attach();
+      }
+    })();
   </script>
 </body>
 </html>
