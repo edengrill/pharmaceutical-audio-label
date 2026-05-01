@@ -1,7 +1,11 @@
 node_modules/
 store_assets/
 Trespasser XIII [split into chunks]/
-Video_Audio/
+Video_:Audio/
+Video_:Singles/
+Video_:Albums/
+Video_:EPs/
+Video_:Mixes/
 .DS_Store
 .env
 .env.local
