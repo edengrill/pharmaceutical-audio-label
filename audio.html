@@ -14,9 +14,15 @@
     .contact { margin-bottom: 2.5rem; }
     .contact a { font-size: 0.78rem; color: #000000; text-decoration: none; letter-spacing: 0.01em; }
     .contact a:hover { text-decoration: underline; text-underline-offset: 2px; }
-    nav { display: flex; flex-direction: column; gap: 0.15rem; }
+    nav { display: flex; flex-direction: column; gap: 0.15rem; margin-bottom: 2.5rem; }
     nav a { font-size: 0.78rem; font-weight: 400; color: #000000; text-decoration: none; letter-spacing: 0.01em; line-height: 1.6; width: fit-content; }
     nav a:hover { text-decoration: underline; text-underline-offset: 2px; }
+    video { width: 20rem; max-width: 100%; display: block; }
+    video::-webkit-media-controls-overlay-play-button,
+    video::-webkit-media-controls-start-playback-button {
+      display: none !important;
+      -webkit-appearance: none;
+    }
   </style>
 </head>
 <body>
@@ -32,5 +38,85 @@
     <a href="/singles">singles</a>
     <a href="/mixes">dj mixes</a>
   </nav>
+  <div id="video-mount"></div>
+  <script>
+    (function () {
+      var n = 2;
+      var lastIdx = null;
+
+      function pickIdx() {
+        var idx;
+        do { idx = Math.floor(Math.random() * n) + 1; }
+        while (idx === lastIdx && n > 1);
+        lastIdx = idx;
+        return String(idx).padStart(2, '0');
+      }
+
+      function attach() {
+        var v = document.createElement('video');
+        v.muted = true;
+        v.defaultMuted = true;
+        v.autoplay = true;
+        v.loop = false;
+        v.playsInline = true;
+        v.preload = 'auto';
+        v.setAttribute('muted', '');
+        v.setAttribute('autoplay', '');
+        v.setAttribute('playsinline', '');
+        v.setAttribute('webkit-playsinline', '');
+        v.setAttribute('disablepictureinpicture', '');
+        v.setAttribute('disableremoteplayback', '');
+        v.setAttribute('controlslist', 'nodownload nofullscreen noremoteplayback noplaybackrate');
+        v.src = '/videos_audio/' + pickIdx() + '.mp4';
+
+        v.addEventListener('ended', function () {
+          v.src = '/videos_audio/' + pickIdx() + '.mp4';
+          var p = v.play();
+          if (p !== undefined) p.catch(function () {});
+        });
+
+        var mount = document.getElementById('video-mount');
+        mount.innerHTML = '';
+        mount.appendChild(v);
+
+        function lock() {
+          v.style.pointerEvents = 'none';
+        }
+
+        function tryPlay() {
+          var p = v.play();
+          if (p !== undefined) {
+            p.then(lock).catch(function () {
+              var kick = function () {
+                v.play().then(lock).catch(function () {});
+                document.removeEventListener('click', kick);
+                document.removeEventListener('touchstart', kick);
+                document.removeEventListener('keydown', kick);
+              };
+              document.addEventListener('click', kick, { once: true });
+              document.addEventListener('touchstart', kick, { once: true });
+              document.addEventListener('keydown', kick, { once: true });
+            });
+          } else {
+            lock();
+          }
+        }
+
+        v.addEventListener('pause', function () {
+          if (!v.ended && !v.seeking) {
+            setTimeout(function () { v.play().catch(function () {}); }, 50);
+          }
+        });
+
+        tryPlay();
+      }
+
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', attach);
+      } else {
+        attach();
+      }
+    })();
+  </script>
 </body>
 </html>
