@@ -17,7 +17,23 @@
     nav { display: flex; flex-direction: column; gap: 0.15rem; margin-bottom: 2.5rem; }
     nav a { font-size: 0.78rem; font-weight: 400; color: #000000; text-decoration: none; letter-spacing: 0.01em; line-height: 1.6; width: fit-content; }
     nav a:hover { text-decoration: underline; text-underline-offset: 2px; }
-    video { width: 20rem; max-width: 100%; display: block; }
+    #video-mount {
+      position: relative;
+      width: 20rem;
+      max-width: 100%;
+      aspect-ratio: 16 / 9;
+    }
+    #video-mount video {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+      opacity: 0;
+    }
+    #video-mount video.active {
+      opacity: 1;
+    }
     video::-webkit-media-controls-overlay-play-button,
     video::-webkit-media-controls-start-playback-button {
       display: none !important;
@@ -42,6 +58,7 @@
   <script>
     (function () {
       var n = 2;
+      var base = '/videos_audio/';
       var lastIdx = null;
 
       function pickIdx() {
@@ -52,43 +69,68 @@
         return String(idx).padStart(2, '0');
       }
 
-      function attach() {
+      function makeVid() {
         var v = document.createElement('video');
         v.muted = true;
         v.defaultMuted = true;
-        v.autoplay = true;
-        v.loop = false;
         v.playsInline = true;
         v.preload = 'auto';
         v.setAttribute('muted', '');
-        v.setAttribute('autoplay', '');
         v.setAttribute('playsinline', '');
         v.setAttribute('webkit-playsinline', '');
         v.setAttribute('disablepictureinpicture', '');
         v.setAttribute('disableremoteplayback', '');
         v.setAttribute('controlslist', 'nodownload nofullscreen noremoteplayback noplaybackrate');
-        v.src = '/videos_audio/' + pickIdx() + '.mp4';
+        return v;
+      }
 
-        v.addEventListener('ended', function () {
-          v.src = '/videos_audio/' + pickIdx() + '.mp4';
-          var p = v.play();
-          if (p !== undefined) p.catch(function () {});
-        });
+      function lock(v) { v.style.pointerEvents = 'none'; }
 
+      function attach() {
         var mount = document.getElementById('video-mount');
-        mount.innerHTML = '';
-        mount.appendChild(v);
+        var current = makeVid();
+        var standby = makeVid();
 
-        function lock() {
-          v.style.pointerEvents = 'none';
+        current.classList.add('active');
+        current.src = base + pickIdx() + '.mp4';
+        standby.src = base + pickIdx() + '.mp4';
+
+        mount.innerHTML = '';
+        mount.appendChild(current);
+        mount.appendChild(standby);
+
+        function rotate() {
+          var t = current; current = standby; standby = t;
+          current.classList.add('active');
+          standby.classList.remove('active');
+
+          var p = current.play();
+          if (p !== undefined) p.then(function () { lock(current); }).catch(function () {});
+
+          standby.src = base + pickIdx() + '.mp4';
+          standby.load();
+
+          current.addEventListener('ended', rotate, { once: true });
         }
+        current.addEventListener('ended', rotate, { once: true });
+
+        function pauseGuard(v) {
+          v.addEventListener('pause', function () {
+            if (!v.classList.contains('active')) return;
+            if (!v.ended && !v.seeking) {
+              setTimeout(function () { v.play().catch(function () {}); }, 50);
+            }
+          });
+        }
+        pauseGuard(current);
+        pauseGuard(standby);
 
         function tryPlay() {
-          var p = v.play();
+          var p = current.play();
           if (p !== undefined) {
-            p.then(lock).catch(function () {
+            p.then(function () { lock(current); }).catch(function () {
               var kick = function () {
-                v.play().then(lock).catch(function () {});
+                current.play().then(function () { lock(current); }).catch(function () {});
                 document.removeEventListener('click', kick);
                 document.removeEventListener('touchstart', kick);
                 document.removeEventListener('keydown', kick);
@@ -98,16 +140,9 @@
               document.addEventListener('keydown', kick, { once: true });
             });
           } else {
-            lock();
+            lock(current);
           }
         }
-
-        v.addEventListener('pause', function () {
-          if (!v.ended && !v.seeking) {
-            setTimeout(function () { v.play().catch(function () {}); }, 50);
-          }
-        });
-
         tryPlay();
       }
 
